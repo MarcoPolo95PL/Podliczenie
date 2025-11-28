@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizator Paska Wypłaty</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .upload-section {
+            padding: 40px;
+            text-align: center;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-box:hover {
+            background: #eef1ff;
+            border-color: #764ba2;
+        }
+
+        .upload-box.dragover {
+            background: #e0e7ff;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .results {
+            padding: 40px;
+            display: none;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .data-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .data-table th, .data-table td {
+            padding: 15px;
+            text-align: left;
+        }
+
+        .data-table tbody tr:nth-child(even) {
+            background: #f8f9ff;
+        }
+
+        .data-table tbody tr:hover {
+            background: #eef1ff;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .badge-podstawa { background: #10b981; color: white; }
+        .badge-premie { background: #f59e0b; color: white; }
+        .badge-nadgodziny { background: #8b5cf6; color: white; }
+        .badge-potracenia { background: #ef4444; color: white; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .chart-container {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .bar {
+            height: 40px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            padding-left: 15px;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.3s;
+        }
+
+        .bar:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 Analizator Paska Wypłaty</h1>
+            <p>Załaduj swój pasek w formacie PDF i zobacz szczegółową analizę</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-box" id="uploadBox">
+                <div class="upload-icon">📄</div>
+                <h2>Przeciągnij plik PDF tutaj</h2>
+                <p>lub kliknij, aby wybrać plik</p>
+                <input type="file" id="fileInput" accept=".pdf">
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 20px; font-size: 1.2em; color: #667eea;">Analizuję pasek wypłaty...</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-label">💰 Do Wypłaty (Netto)</div>
+                    <div class="metric-value" id="nettoValue">0.00 PLN</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">📈 Suma Składników</div>
+                    <div class="metric-value" id="bruttoValue">0.00 PLN</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">🎁 Same Premie</div>
+                    <div class="metric-value" id="premieValue">0.00 PLN</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">📊 Struktura Wypłaty</h2>
+                <div class="chart-container" id="chartContainer"></div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">📋 Szczegółowa Lista Składników</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Nazwa</th>
+                            <th>Kwota (PLN)</th>
+                            <th>Kategoria</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+
+        // Kategorie
+        const CATEGORIES = {
+            "NADGODZINY": ["nadgodz", "100%", "50%", "nocne", "dopłata"],
+            "PREMIE": ["premia", "dodatek", "brygadówka", "stażowy", "nagroda"],
+            "PODSTAWA": ["zasadnicza", "urlop", "wypoczynkowy", "zasiłek", "chorobowe"],
+            "POTRĄCENIA": ["karta", "ubezpieczenie", "ppk", "oksport", "abonament", "pakiet", "potrącenie"]
+        };
+
+        function classifyItem(name) {
+            const nameLower = name.toLowerCase();
+            for (const [cat, keywords] of Object.entries(CATEGORIES)) {
+                if (keywords.some(k => nameLower.includes(k))) return cat;
+            }
+            return "INNE";
+        }
+
+        function isUnitValue(name) {
+            const n = name.toLowerCase();
+            if (n.includes("płaca zasadnicza") || n.includes("zasiłek") || 
+                n.includes("wyn.url") || n.includes("premia") || n.includes("dodatek")) {
+                return false;
+            }
+            return ["godz", "dni", "stawka", "%", "procent"].some(x => n.includes(x));
+        }
+
+        function parseAmount(text) {
+            if (!text) return null;
+            let clean = text.replace(/\s/g, '');
+            if (clean.includes(',') && clean.includes('.')) {
+                clean = clean.replace(/,/g, '');
+            } else if (clean.includes(',')) {
+                clean = clean.replace(/,/g, '.');
+            }
+            const num = parseFloat(clean);
+            return isNaN(num) ? null : num;
+        }
+
+        async function processPDF(file) {
+            loading.style.display = 'block';
+            results.style.display = 'none';
+
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+
+            let items = [];
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const textItems = textContent.items.map(item => item.str);
+
+                // Parsowanie: wartość nad nazwą
+                for (let j = 0; j < textItems.length - 1; j++) {
+                    const val = parseAmount(textItems[j]);
+                    const name = textItems[j + 1];
+
+                    if (val !== null && name && name.length > 2 && 
+                        !parseAmount(name) && !name.includes("Wartość")) {
+                        items.push({
+                            name: name,
+                            value: val,
+                            category: classifyItem(name)
+                        });
+                    }
+                }
+            }
+
+            displayResults(items);
+        }
+
+        function displayResults(items) {
+            // Filtrowanie jednostek
+            const moneyItems = items.filter(item => !isUnitValue(item.name));
+
+            // Obliczenia
+            const brutto = moneyItems
+                .filter(i => ['PODSTAWA', 'PREMIE', 'NADGODZINY'].includes(i.category))
+                .reduce((sum, i) => sum + i.value, 0);
+
+            const premie = moneyItems
+                .filter(i => i.category === 'PREMIE')
+                .reduce((sum, i) => sum + i.value, 0);
+
+            const payoutItem = items.find(i => 
+                i.name.replace(/\s/g, '').toLowerCase().includes('dowypłaty')
+            );
+            const netto = payoutItem ? payoutItem.value : 0;
+
+            // Wyświetlanie metryk
+            document.getElementById('nettoValue').textContent = netto.toFixed(2) + ' PLN';
+            document.getElementById('bruttoValue').textContent = brutto.toFixed(2) + ' PLN';
+            document.getElementById('premieValue').textContent = premie.toFixed(2) + ' PLN';
+
+            // Wykres
+            const chartData = {};
+            moneyItems
+                .filter(i => ['PODSTAWA', 'PREMIE', 'NADGODZINY'].includes(i.category))
+                .forEach(item => {
+                    chartData[item.category] = (chartData[item.category] || 0) + item.value;
+                });
+
+            const chartContainer = document.getElementById('chartContainer');
+            chartContainer.innerHTML = '';
+            const maxVal = Math.max(...Object.values(chartData));
+
+            for (const [cat, val] of Object.entries(chartData)) {
+                const width = (val / maxVal) * 100;
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.width = width + '%';
+                bar.textContent = `${cat}: ${val.toFixed(2)} PLN`;
+                chartContainer.appendChild(bar);
+            }
+
+            // Tabela
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            const sortedItems = moneyItems
+                .filter(i => ['PODSTAWA', 'PREMIE', 'NADGODZINY'].includes(i.category))
+                .sort((a, b) => b.value - a.value);
+
+            sortedItems.forEach(item => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td><strong>${item.value.toFixed(2)}</strong></td>
+                    <td><span class="category-badge badge-${item.category.toLowerCase()}">${item.category}</span></td>
+                `;
+            });
+
+            loading.style.display = 'none';
+            results.style.display = 'block';
+        }
+
+        // Event listeners
+        uploadBox.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                processPDF(file);
+            }
+        });
+
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'application/pdf') {
+                processPDF(file);
+            }
+        });
+    </script>
+</body>
+</html>
